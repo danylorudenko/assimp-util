@@ -13,10 +13,12 @@ void processModel(char const* sourceName, char const* destName);
 
 void recursiveMeshParse(aiNode const* node, aiScene const* scene, std::vector<Mesh>& storage);
 
-Mesh processMesh(aiMesh* mesh, const aiScene* scene);
+Mesh processMesh(aiMesh const* mesh, aiScene const* scene);
 
 void serializeMeshPositions(Mesh const& mesh, std::vector<std::uint8_t>& storage);
 void serializeMeshIndicies(Mesh const& mesh, std::vector<std::uint8_t>& storage);
+
+void mapToFile(std::size_t size, std::uint8_t const* data, char const* destName);
 
 int main(int argc, char** argv)
 {
@@ -30,7 +32,7 @@ int main(int argc, char** argv)
     return 0;
 }
 
-Mesh processMesh(aiMesh* mesh, const aiScene* scene)
+Mesh processMesh(aiMesh const* mesh, aiScene const * scene)
 {
     int const vertexCount = mesh->mNumVertices;
     std::vector<Pos> vertices(vertexCount);
@@ -41,27 +43,15 @@ Mesh processMesh(aiMesh* mesh, const aiScene* scene)
         vert.y = mesh->mVertices[i].y;
         vert.z = mesh->mVertices[i].z;
 
-        //vert.normal[0] = mesh->mNormals[i].x;
-        //vert.normal[1] = mesh->mNormals[i].y;
-        //vert.normal[2] = mesh->mNormals[i].z;
-
-        //if (mesh->mTextureCoords[0]) {
-        //    vert.uv[0] = mesh->mTextureCoords[0][i].x;
-        //    vert.uv[1] = mesh->mTextureCoords[0][i].y;
-        //}
-        //else {
-        //    vert.uv[0] = 0.0f;
-        //    vert.uv[1] = 0.0f;
-        //}
 
         vertices.push_back(vert);
     }
 
     std::vector<std::size_t> indicies;
-    size_t const faceCount = mesh->mNumFaces;
-    for (size_t i = 0; i < faceCount; i++) {
+    std::size_t const faceCount = mesh->mNumFaces;
+    for (std::size_t i = 0; i < faceCount; i++) {
         aiFace face = mesh->mFaces[i];
-        for (size_t j = 0; j < face.mNumIndices; j++) {
+        for (std::size_t j = 0; j < face.mNumIndices; j++) {
             indicies.push_back(face.mIndices[j]);
         }
     }
@@ -82,13 +72,34 @@ void processModel(char const* sourceName, char const* destName) {
             << "Can't read the file " << sourceName << std::endl;
     }
     else {
-        std::vector<Mesh> storage;
-        recursiveMeshParse(scene->mRootNode, scene, storage);
+        std::vector<Mesh> meshStorage;
+        recursiveMeshParse(scene->mRootNode, scene, meshStorage);
+
+        std::vector<std::uint8_t> vertexStorage{};
+        std::vector<std::uint8_t> indexStorage{};
+
+        std::size_t const meshCount = meshStorage.size();
+        for (std::size_t i = 0; i < meshCount; i++) {
+            serializeMeshPositions(meshStorage[i], vertexStorage);
+            serializeMeshIndicies(meshStorage[i], indexStorage);
+        }
+
+        mapToFile(vertexStorage.size(), vertexStorage.data(), destName);
+        mapToFile(indexStorage.size(), indexStorage.data(), destName);
     }
 }
 
-void recursiveMeshParse(aiNode const* mesh, aiScene const* scene, std::vector<Mesh>& storage) {
+void recursiveMeshParse(aiNode const* node, aiScene const* scene, std::vector<Mesh>& storage) {
+    std::size_t const meshCount = node->mNumMeshes;
+    for (std::size_t i = 0; i < meshCount; i++) {
+        aiMesh const* mesh = scene->mMeshes[node->mMeshes[i]];
+        storage.push_back(processMesh(mesh, scene));
+    }
 
+    std::size_t childCount = node->mNumChildren;
+    for (std::size_t i = 0; i < childCount; i++) {
+        recursiveMeshParse(node->mChildren[i], scene, storage);
+    }
 }
 
 void serializeMeshPositions(Mesh const& mesh, std::vector<std::uint8_t>& storage)
@@ -117,4 +128,20 @@ void serializeMeshIndicies(Mesh const& mesh, std::vector<std::uint8_t>& storage)
             storage.emplace_back(buffer[j]);
         }
     }
+}
+
+void mapToFile(std::size_t size, std::uint8_t const* data, char const* destName)
+{
+    std::ofstream outStream{};
+    outStream.open(destName, std::ios_base::app | std::ios_base::binary);
+
+    if (!outStream.is_open()) {
+        std::cerr << "STD::OFSTREAM::ERROR" << std::endl
+            << "Can't open file " << destName << std::endl;
+
+        return;
+    }
+    outStream.write(reinterpret_cast<char const*>(&size), sizeof(size));
+    outStream.write(reinterpret_cast<char const*>(data), static_cast<std::streamsize>(size));
+    outStream.close();
 }

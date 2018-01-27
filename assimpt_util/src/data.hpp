@@ -26,6 +26,13 @@ struct UV
 
 struct Mesh
 {
+    Mesh() = default;
+    Mesh(Mesh const&) = default;
+    Mesh(Mesh&&) = default;
+    Mesh& operator=(Mesh const&) = default;
+    Mesh& operator=(Mesh&&) = default;
+
+
     std::vector<Pos> vertices;
     std::vector<std::size_t> indicies;
 
