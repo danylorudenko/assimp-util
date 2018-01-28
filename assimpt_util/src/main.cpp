@@ -22,10 +22,8 @@ void mapToFile(std::size_t size, std::uint8_t const* data, char const* destName)
 
 int main(int argc, char** argv)
 {
-    std::vector<Mesh> meshes;
-
-    if (argc == 2) {
-        //meshes = processModel(*(argv + 1));
+    if (argc == 3) {
+        processModel(*(argv + 1), *(argv + 2));
     }
     
     system("pause");
@@ -67,6 +65,7 @@ Mesh processMesh(aiMesh const* mesh, aiScene const * scene)
 void processModel(char const* sourceName, char const* destName) {
     Assimp::Importer importer;
     aiScene const* scene = importer.ReadFile(std::string{ sourceName }, aiProcess_Triangulate | aiProcess_ConvertToLeftHanded);
+    std::cerr << importer.GetErrorString() << std::endl;
     if (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) {
         std::cerr << "ASSIMP::IMPORTER::ERROR" << std::endl
             << "Can't read the file " << sourceName << std::endl;
