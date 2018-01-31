@@ -2,6 +2,16 @@
 
 #include <vector>
 
+struct VertHeader
+{
+    std::size_t vertexCount_ = 0;
+    std::size_t vertexOffset_ = 0;
+    std::size_t vertexSize_ = 0;
+    std::size_t indexCount_ = 0;
+    std::size_t indexOffset_ = 0;
+    std::size_t indexSize_ = 0;
+};
+
 struct Vertex
 {
     float position[3];
