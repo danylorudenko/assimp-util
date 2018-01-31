@@ -34,6 +34,8 @@ int main(int argc, char** argv)
 
 Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
 {
+    assert(mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE);
+
     int const vertexCount = mesh->mNumVertices;
     std::vector<Pos> vertices(vertexCount);
     for (int i = 0; i < vertexCount; i++) {
@@ -44,13 +46,13 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
         vert.z = mesh->mVertices[i].z;
 
 
-        vertices.push_back(vert);
+        vertices[i] = vert;
     }
 
-    std::vector<std::size_t> indicies;
+    std::vector<std::uint32_t> indicies;
     std::size_t const faceCount = mesh->mNumFaces;
     for (std::size_t i = 0; i < faceCount; i++) {
-        aiFace face = mesh->mFaces[i];
+        aiFace& face = mesh->mFaces[i];
         for (std::size_t j = 0; j < face.mNumIndices; j++) {
             indicies.push_back(face.mIndices[j]);
         }
@@ -59,7 +61,6 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
     Mesh processedMesh;
     processedMesh.vertices = std::move(vertices);
     processedMesh.indicies = std::move(indicies);
-    //processedMesh.material = mesh->mMaterialIndex;
 
     return processedMesh;
 }
@@ -85,6 +86,9 @@ void processModel(char const* sourceName, char const* destName) {
             serializeMeshIndicies(meshStorage[i], indexStorage);
         }
 
+        auto header = provideHeader(meshStorage);
+
+        writeToFile(sizeof(decltype(header)), reinterpret_cast<const std::uint8_t*>(&header), destName);
         writeToFile(vertexStorage.size(), vertexStorage.data(), destName);
         writeToFile(indexStorage.size(), indexStorage.data(), destName);
     }
@@ -109,7 +113,8 @@ VertHeader provideHeader(std::vector<Mesh>& meshStorage)
     header.vertexSize_ = sizeof(Vertex);
     header.indexSize_ = sizeof(std::size_t);
     for (std::size_t i = 0; i < meshStorage.size(); i++) {
-        header.
+        header.vertexCount_ += meshStorage[i].vertices.size();
+        header.indexCount_ += meshStorage[i].indicies.size();
     }
 
     return header;
@@ -124,6 +129,8 @@ void serializeMeshPositions(Mesh const& mesh, std::vector<std::uint8_t>& storage
         position[1] = mesh.vertices[i].y;
         position[2] = mesh.vertices[i].z;
 
+        std::memcpy(buffer, position, sizeof(position));
+
         for (std::size_t j = 0; j < sizeof(position); j++) {
             storage.emplace_back(buffer[j]);
         }
@@ -132,10 +139,12 @@ void serializeMeshPositions(Mesh const& mesh, std::vector<std::uint8_t>& storage
 
 void serializeMeshIndicies(Mesh const& mesh, std::vector<std::uint8_t>& storage)
 {
-    std::size_t index;
+    std::uint32_t index;
     std::uint8_t buffer[sizeof(index)];
     for (std::size_t i = 0; i < mesh.indicies.size(); i++) {
         index = mesh.indicies[i];
+
+        std::memcpy(buffer, &index, sizeof(index));
 
         for (std::size_t j = 0; j < sizeof(index); j++) {
             storage.emplace_back(buffer[j]);
@@ -146,7 +155,7 @@ void serializeMeshIndicies(Mesh const& mesh, std::vector<std::uint8_t>& storage)
 void writeToFile(std::size_t size, std::uint8_t const* data, char const* destName)
 {
     std::ofstream outStream{};
-    outStream.open(destName, std::ios_base::app | std::ios_base::binary);
+    outStream.open(destName, std::ios_base::ate | std::ios_base::binary);
 
     if (!outStream.is_open()) {
         std::cerr << "STD::OFSTREAM::ERROR" << std::endl
@@ -154,7 +163,6 @@ void writeToFile(std::size_t size, std::uint8_t const* data, char const* destNam
 
         return;
     }
-    //outStream.write(reinterpret_cast<char const*>(&size), sizeof(size));
     outStream.write(reinterpret_cast<char const*>(data), static_cast<std::streamsize>(size));
     outStream.close();
 }

@@ -4,12 +4,10 @@
 
 struct VertHeader
 {
-    std::size_t vertexCount_ = 0;
-    std::size_t vertexOffset_ = 0;
-    std::size_t vertexSize_ = 0;
-    std::size_t indexCount_ = 0;
-    std::size_t indexOffset_ = 0;
-    std::size_t indexSize_ = 0;
+    std::uint32_t vertexCount_ = 0;
+    std::uint32_t vertexSize_ = 0;
+    std::uint32_t indexCount_ = 0;
+    std::uint32_t indexSize_ = 0;
 };
 
 struct Vertex
@@ -44,7 +42,7 @@ struct Mesh
 
 
     std::vector<Pos> vertices;
-    std::vector<std::size_t> indicies;
+    std::vector<std::uint32_t> indicies;
 
     //int material;
 };
