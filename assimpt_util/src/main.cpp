@@ -20,12 +20,20 @@ VertHeader provideHeader(std::vector<Mesh>& meshStorage);
 void serializeMeshPositions(Mesh const& mesh, std::vector<std::uint8_t>& storage);
 void serializeMeshIndicies(Mesh const& mesh, std::vector<std::uint8_t>& storage);
 
-void writeToFile(std::size_t size, std::uint8_t const* data, char const* destName);
+void writeToFile(std::size_t size, char const* data, char const* destName);
 
 int main(int argc, char** argv)
 {
     if (argc == 3) {
         processModel(*(argv + 1), *(argv + 2));
+
+        //VertHeader testHeader;
+        //testHeader.vertexSize_ = 16;
+        //testHeader.vertexCount_ = 65498;
+        //testHeader.indexSize_ = 4;
+        //testHeader.indexCount_ = 1000;
+        //
+        //writeToFile(sizeof(testHeader), reinterpret_cast<char const*>(&testHeader), "header.vert");
     }
     
     system("pause");
@@ -84,13 +92,20 @@ void processModel(char const* sourceName, char const* destName) {
         for (std::size_t i = 0; i < meshCount; i++) {
             serializeMeshPositions(meshStorage[i], vertexStorage);
             serializeMeshIndicies(meshStorage[i], indexStorage);
-        }
+        }        auto header = provideHeader(meshStorage);
 
-        auto header = provideHeader(meshStorage);
+        //writeToFile(sizeof(header), reinterpret_cast<char const*>(&header), destName);
+        //writeToFile(vertexStorage.size(), reinterpret_cast<char const*>(vertexStorage.data()), destName);
+        //writeToFile(indexStorage.size(), reinterpret_cast<char const*>(indexStorage.data()), destName);
 
-        writeToFile(sizeof(decltype(header)), reinterpret_cast<const std::uint8_t*>(&header), destName);
-        writeToFile(vertexStorage.size(), vertexStorage.data(), destName);
-        writeToFile(indexStorage.size(), indexStorage.data(), destName);
+        std::ofstream ostream{ destName, std::ios_base::binary | std::ios_base::trunc };
+        assert(ostream.is_open());
+
+        ostream.write(reinterpret_cast<char const*>(&header), sizeof(header));
+        ostream.write(reinterpret_cast<char const*>(vertexStorage.data()), vertexStorage.size());
+        ostream.write(reinterpret_cast<char const*>(indexStorage.data()), indexStorage.size());
+
+        ostream.close();
     }
 }
 
@@ -110,8 +125,8 @@ void recursiveMeshParse(aiNode const* node, aiScene const* scene, std::vector<Me
 VertHeader provideHeader(std::vector<Mesh>& meshStorage)
 {
     VertHeader header{};
-    header.vertexSize_ = sizeof(Vertex);
-    header.indexSize_ = sizeof(std::size_t);
+    header.vertexSize_ = sizeof(Pos);
+    header.indexSize_ = sizeof(std::uint32_t);
     for (std::size_t i = 0; i < meshStorage.size(); i++) {
         header.vertexCount_ += meshStorage[i].vertices.size();
         header.indexCount_ += meshStorage[i].indicies.size();
@@ -152,10 +167,10 @@ void serializeMeshIndicies(Mesh const& mesh, std::vector<std::uint8_t>& storage)
     }
 }
 
-void writeToFile(std::size_t size, std::uint8_t const* data, char const* destName)
+void writeToFile(std::size_t size, char const* data, char const* destName)
 {
     std::ofstream outStream{};
-    outStream.open(destName, std::ios_base::ate | std::ios_base::binary);
+    outStream.open(destName, std::ios_base::binary);
 
     if (!outStream.is_open()) {
         std::cerr << "STD::OFSTREAM::ERROR" << std::endl
@@ -163,6 +178,8 @@ void writeToFile(std::size_t size, std::uint8_t const* data, char const* destNam
 
         return;
     }
-    outStream.write(reinterpret_cast<char const*>(data), static_cast<std::streamsize>(size));
+
+    outStream.seekp(std::ios_base::end);
+    outStream.write(data, size);
     outStream.close();
 }
