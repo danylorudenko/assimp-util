@@ -10,13 +10,6 @@ struct VertHeader
     std::uint32_t indexSize_ = 0;
 };
 
-struct Vertex
-{
-    float position[3];
-    float normal[3];
-    float uv[2];
-};
-
 struct Pos
 {
     float x, y, z;
@@ -24,7 +17,13 @@ struct Pos
 
 struct Normal
 {
-    float x, y;
+    float x, y, z;
+};
+
+struct Vertex
+{
+    Pos position_;
+    Normal normal_;;
 };
 
 struct UV
@@ -41,7 +40,7 @@ struct Mesh
     Mesh& operator=(Mesh&&) = default;
 
 
-    std::vector<Pos> vertices;
+    std::vector<Vertex> vertices;
     std::vector<std::uint32_t> indicies;
 
     //int material;

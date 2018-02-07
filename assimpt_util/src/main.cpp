@@ -26,14 +26,6 @@ int main(int argc, char** argv)
 {
     if (argc == 3) {
         processModel(*(argv + 1), *(argv + 2));
-
-        //VertHeader testHeader;
-        //testHeader.vertexSize_ = 16;
-        //testHeader.vertexCount_ = 65498;
-        //testHeader.indexSize_ = 4;
-        //testHeader.indexCount_ = 1000;
-        //
-        //writeToFile(sizeof(testHeader), reinterpret_cast<char const*>(&testHeader), "header.vert");
     }
     
     system("pause");
@@ -45,16 +37,20 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
     assert(mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE);
 
     int const vertexCount = mesh->mNumVertices;
-    std::vector<Pos> vertices(vertexCount);
+    std::vector<Vertex> vertices(vertexCount);
     for (int i = 0; i < vertexCount; i++) {
-        Pos vert;
+        Pos vert{};
+        Normal norm{};
 
         vert.x = mesh->mVertices[i].x;
         vert.y = mesh->mVertices[i].y;
         vert.z = mesh->mVertices[i].z;
 
+        norm.x = mesh->mNormals[i].x;
+        norm.y = mesh->mNormals[i].y;
+        norm.z = mesh->mNormals[i].z;
 
-        vertices[i] = vert;
+        vertices[i] = Vertex{ vert, norm };
     }
 
     std::vector<std::uint32_t> indicies;
@@ -75,7 +71,7 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
 
 void processModel(char const* sourceName, char const* destName) {
     Assimp::Importer importer;
-    aiScene const* scene = importer.ReadFile(std::string{ sourceName }, aiProcess_Triangulate | aiProcess_ConvertToLeftHanded);
+    aiScene const* scene = importer.ReadFile(std::string{ sourceName }, aiProcess_Triangulate | aiProcess_ConvertToLeftHanded | aiProcess_GenNormals);
     std::cerr << importer.GetErrorString() << std::endl;
     if (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) {
         std::cerr << "ASSIMP::IMPORTER::ERROR" << std::endl
@@ -92,7 +88,8 @@ void processModel(char const* sourceName, char const* destName) {
         for (std::size_t i = 0; i < meshCount; i++) {
             serializeMeshPositions(meshStorage[i], vertexStorage);
             serializeMeshIndicies(meshStorage[i], indexStorage);
-        }        auto header = provideHeader(meshStorage);
+        }        
+        auto header = provideHeader(meshStorage);
 
         //writeToFile(sizeof(header), reinterpret_cast<char const*>(&header), destName);
         //writeToFile(vertexStorage.size(), reinterpret_cast<char const*>(vertexStorage.data()), destName);
@@ -125,7 +122,7 @@ void recursiveMeshParse(aiNode const* node, aiScene const* scene, std::vector<Me
 VertHeader provideHeader(std::vector<Mesh>& meshStorage)
 {
     VertHeader header{};
-    header.vertexSize_ = sizeof(Pos);
+    header.vertexSize_ = sizeof(Vertex);
     header.indexSize_ = sizeof(std::uint32_t);
     for (std::size_t i = 0; i < meshStorage.size(); i++) {
         header.vertexCount_ += meshStorage[i].vertices.size();
@@ -137,16 +134,12 @@ VertHeader provideHeader(std::vector<Mesh>& meshStorage)
 
 void serializeMeshPositions(Mesh const& mesh, std::vector<std::uint8_t>& storage)
 {
-    float position[3];
-    std::uint8_t buffer[sizeof(position)];
+    std::uint8_t buffer[sizeof(Vertex)];
     for (std::size_t i = 0; i < mesh.vertices.size(); i++) {
-        position[0] = mesh.vertices[i].x;
-        position[1] = mesh.vertices[i].y;
-        position[2] = mesh.vertices[i].z;
+        
+        std::memcpy(buffer, &mesh.vertices[i], sizeof(Vertex));
 
-        std::memcpy(buffer, position, sizeof(position));
-
-        for (std::size_t j = 0; j < sizeof(position); j++) {
+        for (std::size_t j = 0; j < sizeof(Vertex); j++) {
             storage.emplace_back(buffer[j]);
         }
     }
