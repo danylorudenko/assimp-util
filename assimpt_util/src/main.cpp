@@ -125,8 +125,8 @@ VertHeader provideHeader(std::vector<Mesh>& meshStorage)
     header.vertexSize_ = sizeof(Vertex);
     header.indexSize_ = sizeof(std::uint32_t);
     for (std::size_t i = 0; i < meshStorage.size(); i++) {
-        header.vertexCount_ += meshStorage[i].vertices.size();
-        header.indexCount_ += meshStorage[i].indicies.size();
+        header.vertexCount_ += static_cast<std::uint32_t>(meshStorage[i].vertices.size());
+        header.indexCount_ += static_cast<std::uint32_t>(meshStorage[i].indicies.size());
     }
 
     return header;

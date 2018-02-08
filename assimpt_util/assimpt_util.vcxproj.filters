@@ -25,7 +25,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="libs\assimpd.lib" />
     <Library Include="libs\zlibstaticd.lib" />
+    <Library Include="libs\assimp-vc140-mt.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="libs\assimp-vc140-mt.dll" />
   </ItemGroup>
 </Project>
