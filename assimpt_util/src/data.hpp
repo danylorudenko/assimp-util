@@ -20,15 +20,16 @@ struct Normal
     float x, y, z;
 };
 
+struct UV
+{
+	float u, v;
+};
+
 struct Vertex
 {
     Pos position_;
-    Normal normal_;;
-};
-
-struct UV
-{
-    float u, v;
+    Normal normal_;
+	UV uv_;
 };
 
 struct Mesh

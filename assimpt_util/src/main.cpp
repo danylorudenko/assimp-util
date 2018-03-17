@@ -17,7 +17,7 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene);
 
 VertHeader provideHeader(std::vector<Mesh>& meshStorage);
 
-void serializeMeshPositions(Mesh const& mesh, std::vector<std::uint8_t>& storage);
+void serializeMeshVertices(Mesh const& mesh, std::vector<std::uint8_t>& storage);
 void serializeMeshIndicies(Mesh const& mesh, std::vector<std::uint8_t>& storage);
 
 void writeToFile(std::size_t size, char const* data, char const* destName);
@@ -41,6 +41,7 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
     for (int i = 0; i < vertexCount; i++) {
         Pos vert{};
         Normal norm{};
+		UV uv{ 0.0f, 0.0f };
 
         vert.x = mesh->mVertices[i].x;
         vert.y = mesh->mVertices[i].y;
@@ -50,7 +51,12 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
         norm.y = mesh->mNormals[i].y;
         norm.z = mesh->mNormals[i].z;
 
-        vertices[i] = Vertex{ vert, norm };
+		if (mesh->mTextureCoords[0]) {
+			uv.u = mesh->mTextureCoords[0][i].x;
+			uv.v = mesh->mTextureCoords[0][i].y;
+		}
+
+        vertices[i] = Vertex{ vert, norm, uv };
     }
 
     std::vector<std::uint32_t> indicies;
@@ -86,7 +92,7 @@ void processModel(char const* sourceName, char const* destName) {
 
         std::size_t const meshCount = meshStorage.size();
         for (std::size_t i = 0; i < meshCount; i++) {
-            serializeMeshPositions(meshStorage[i], vertexStorage);
+            serializeMeshVertices(meshStorage[i], vertexStorage);
             serializeMeshIndicies(meshStorage[i], indexStorage);
         }        
         auto header = provideHeader(meshStorage);
@@ -132,7 +138,7 @@ VertHeader provideHeader(std::vector<Mesh>& meshStorage)
     return header;
 }
 
-void serializeMeshPositions(Mesh const& mesh, std::vector<std::uint8_t>& storage)
+void serializeMeshVertices(Mesh const& mesh, std::vector<std::uint8_t>& storage)
 {
     std::uint8_t buffer[sizeof(Vertex)];
     for (std::size_t i = 0; i < mesh.vertices.size(); i++) {
