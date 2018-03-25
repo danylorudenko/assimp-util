@@ -41,6 +41,8 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
     for (int i = 0; i < vertexCount; i++) {
         Pos vert{};
         Normal norm{};
+		Tangent tangent{};
+		Bitangent bitangent{};
 		UV uv{ 0.0f, 0.0f };
 
         vert.x = mesh->mVertices[i].x;
@@ -51,12 +53,21 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
         norm.y = mesh->mNormals[i].y;
         norm.z = mesh->mNormals[i].z;
 
+		tangent.x = mesh->mTangents[i].x;
+		tangent.y = mesh->mTangents[i].y;
+		tangent.z = mesh->mTangents[i].z;
+
+		bitangent.x = mesh->mBitangents[i].x;
+		bitangent.y = mesh->mBitangents[i].y;
+		bitangent.z = mesh->mBitangents[i].z;
+
+
 		if (mesh->mTextureCoords[0]) {
 			uv.u = mesh->mTextureCoords[0][i].x;
 			uv.v = mesh->mTextureCoords[0][i].y;
 		}
 
-        vertices[i] = Vertex{ vert, norm, uv };
+        vertices[i] = Vertex{ vert, norm, tangent, bitangent, uv };
     }
 
     std::vector<std::uint32_t> indicies;
