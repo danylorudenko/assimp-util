@@ -38,10 +38,18 @@ struct UV
 struct Vertex
 {
     Pos position_;
+#ifdef OUTPUT_NORMAL
     Normal normal_;
+#endif // OUTPUT_NORMAL
+#ifdef OUTPUT_TANGENT
 	Tangent tangent_;
+#endif // OUTPUT_TANGENT
+#ifdef OUTPUT_BITANGENT
 	Bitangent bitangent_;
+#endif // OUTPUT_BITANGENT
+#ifdef OUTPUT_UV
 	UV uv_;
+#endif // OUTPUT_UV
 };
 
 struct Mesh

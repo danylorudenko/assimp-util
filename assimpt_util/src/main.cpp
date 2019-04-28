@@ -7,6 +7,11 @@
 #include <assimp\scene.h>
 #include <assimp\postprocess.h>
 
+//#define OUTPUT_NORMAL
+//#define OUTPUT_TANGENT
+//#define OUTPUT_BITANGENT
+//#define OUTPUT_UV
+
 #include "data.hpp"
 
 void processModel(char const* sourceName, char const* destName);
@@ -36,9 +41,10 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
 {
     assert(mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE);
 
-    int const vertexCount = mesh->mNumVertices;
-    std::vector<Vertex> vertices(vertexCount);
-    for (int i = 0; i < vertexCount; i++) {
+    std::uint32_t const vertexCount = static_cast<std::uint32_t>(mesh->mNumVertices);
+    std::vector<Vertex> vertices;
+    vertices.reserve(vertexCount);
+    for (std::uint32_t i = 0; i < vertexCount; i++) {
         Pos vert{};
         Normal norm{};
 		Tangent tangent{};
@@ -49,29 +55,52 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
         vert.y = mesh->mVertices[i].y;
         vert.z = mesh->mVertices[i].z;
 
+#ifdef OUTPUT_NORMAL
         norm.x = mesh->mNormals[i].x;
         norm.y = mesh->mNormals[i].y;
         norm.z = mesh->mNormals[i].z;
+#endif // OUTPUT_NORMAL
 
+#ifdef OUTPUT_TANGENT
 		tangent.x = mesh->mTangents[i].x;
 		tangent.y = mesh->mTangents[i].y;
 		tangent.z = mesh->mTangents[i].z;
+#endif // OUTPUT_TANGENT
 
+#ifdef OUTPUT_BITANGENT
 		bitangent.x = mesh->mBitangents[i].x;
 		bitangent.y = mesh->mBitangents[i].y;
 		bitangent.z = mesh->mBitangents[i].z;
+#endif // OUTPUT_BITANGENT
 
 
 		if (mesh->mTextureCoords[0]) {
+#ifdef OUTPUT_UV
 			uv.u = mesh->mTextureCoords[0][i].x;
 			uv.v = mesh->mTextureCoords[0][i].y;
+#endif // OUTPUT_UV
 		}
 
-        vertices[i] = Vertex{ vert, norm, tangent, bitangent, uv };
+        vertices[i] = Vertex{ 
+            vert,
+#ifdef OUTPUT_NORMAL
+            norm, 
+#endif // OUTPUT_NORMAL
+#ifdef OUTPUT_TANGENT
+            tangent, 
+#endif // OUTPUT_TANGENT
+#ifdef OUTPUT_BITANGENT
+            bitangent, 
+#endif // OUTPUT_BITANGENT
+#ifdef OUTPUT_UV
+            uv 
+#endif // OUTPUT_UV
+        };
     }
 
     std::vector<std::uint32_t> indicies;
     std::size_t const faceCount = mesh->mNumFaces;
+    indicies.reserve(faceCount);
     for (std::size_t i = 0; i < faceCount; i++) {
         aiFace& face = mesh->mFaces[i];
         for (std::size_t j = 0; j < face.mNumIndices; j++) {
@@ -83,7 +112,7 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
     processedMesh.vertices = std::move(vertices);
     processedMesh.indicies = std::move(indicies);
 
-    return processedMesh;
+    return std::move(processedMesh);
 }
 
 void processModel(char const* sourceName, char const* destName) {
@@ -106,7 +135,7 @@ void processModel(char const* sourceName, char const* destName) {
             serializeMeshVertices(meshStorage[i], vertexStorage);
             serializeMeshIndicies(meshStorage[i], indexStorage);
         }        
-        auto header = provideHeader(meshStorage);
+        VertHeader header = provideHeader(meshStorage);
 
         //writeToFile(sizeof(header), reinterpret_cast<char const*>(&header), destName);
         //writeToFile(vertexStorage.size(), reinterpret_cast<char const*>(vertexStorage.data()), destName);
