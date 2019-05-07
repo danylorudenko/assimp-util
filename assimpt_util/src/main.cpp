@@ -7,7 +7,7 @@
 #include <assimp\scene.h>
 #include <assimp\postprocess.h>
 
-//#define OUTPUT_NORMAL
+#define OUTPUT_NORMAL
 //#define OUTPUT_TANGENT
 //#define OUTPUT_BITANGENT
 //#define OUTPUT_UV
@@ -81,7 +81,7 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
 #endif // OUTPUT_UV
 		}
 
-        vertices[i] = Vertex{ 
+        vertices.push_back( Vertex{ 
             vert,
 #ifdef OUTPUT_NORMAL
             norm, 
@@ -95,7 +95,7 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
 #ifdef OUTPUT_UV
             uv 
 #endif // OUTPUT_UV
-        };
+        } );
     }
 
     std::vector<std::uint32_t> indicies;
