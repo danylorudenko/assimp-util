@@ -20,7 +20,7 @@ void recursiveMeshParse(aiNode const* node, aiScene const* scene, std::vector<Me
 
 Mesh processMesh(aiMesh const* mesh, aiScene const* scene);
 
-VertHeader provideHeader(std::vector<Mesh>& meshStorage);
+ModelHeader provideHeader(std::vector<Mesh>& meshStorage);
 
 void serializeMeshVertices(Mesh const& mesh, std::vector<std::uint8_t>& storage);
 void serializeMeshIndicies(Mesh const& mesh, std::vector<std::uint8_t>& storage);
@@ -135,7 +135,7 @@ void processModel(char const* sourceName, char const* destName) {
             serializeMeshVertices(meshStorage[i], vertexStorage);
             serializeMeshIndicies(meshStorage[i], indexStorage);
         }        
-        VertHeader header = provideHeader(meshStorage);
+        ModelHeader header = provideHeader(meshStorage);
 
         //writeToFile(sizeof(header), reinterpret_cast<char const*>(&header), destName);
         //writeToFile(vertexStorage.size(), reinterpret_cast<char const*>(vertexStorage.data()), destName);
@@ -165,15 +165,29 @@ void recursiveMeshParse(aiNode const* node, aiScene const* scene, std::vector<Me
     }
 }
 
-VertHeader provideHeader(std::vector<Mesh>& meshStorage)
+ModelHeader provideHeader(std::vector<Mesh>& meshStorage)
 {
-    VertHeader header{};
+    ModelHeader header{};
     header.vertexSize_ = sizeof(Vertex);
     header.indexSize_ = sizeof(std::uint32_t);
     for (std::size_t i = 0; i < meshStorage.size(); i++) {
         header.vertexCount_ += static_cast<std::uint32_t>(meshStorage[i].vertices.size());
         header.indexCount_ += static_cast<std::uint32_t>(meshStorage[i].indicies.size());
     }
+
+    header.vertexContentFlags_ = MODEL_VERTEX_CONTENT_POSITION;
+#ifdef OUTPUT_NORMAL
+    header.vertexContentFlags_ |= MODEL_VERTEX_CONTENT_NORMAL;
+#endif // OUTPUT_NORMAL
+#ifdef OUTPUT_TANGENT
+    header.vertexContentFlags_ |= MODEL_VERTEX_CONTENT_TANGENT;
+#endif // OUTPUT_TANGENT
+#ifdef OUTPUT_BITANGENT
+    header.vertexContentFlags_ |= MODEL_VERTEX_CONTENT_BITANGENT;
+#endif // OUTPUT_BITANGENT
+#ifdef OUTPUT_UV
+    header.vertexContentFlags_ |= MODEL_VERTEX_CONTENT_UV;
+#endif // OUTPUT_UV
 
     return header;
 }
