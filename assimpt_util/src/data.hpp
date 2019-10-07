@@ -1,13 +1,24 @@
 #pragma once
 
 #include <vector>
+#include <cstdint>
 
-struct VertHeader
+enum ModelVertexContentFlags : std::uint32_t
+{
+    MODEL_VERTEX_CONTENT_POSITION = 1,
+    MODEL_VERTEX_CONTENT_NORMAL = 1 << 1,
+    MODEL_VERTEX_CONTENT_TANGENT = 1 << 2,
+    MODEL_VERTEX_CONTENT_BITANGENT = 1 << 3,
+    MODEL_VERTEX_CONTENT_UV = 1 << 4
+};
+
+struct ModelHeader
 {
     std::uint32_t vertexCount_ = 0;
     std::uint32_t vertexSize_ = 0;
     std::uint32_t indexCount_ = 0;
     std::uint32_t indexSize_ = 0;
+    std::uint32_t vertexContentFlags_ = 0;
 };
 
 struct Pos
