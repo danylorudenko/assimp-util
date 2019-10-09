@@ -2,27 +2,58 @@
 
 #include <vector>
 #include <cstdint>
+#include <byte>
 
-enum VertexAttributeFlags : std::uint32_t
+enum VertexAttributeType : std::uint32_t
 {
-    VERTEX_ATTRIBUTE_POSITION   = 1,
-    VERTEX_ATTRIBUTE_NORMAL     = 1 << 1,
-    VERTEX_ATTRIBUTE_TANGENT    = 1 << 2,
-    VERTEX_ATTRIBUTE_BITANGENT  = 1 << 3,
-    VERTEX_ATTRIBUTE_UV         = 1 << 4
+    VERTEX_ATTRIBUTE_TYPE_NONE       = 0,
+    VERTEX_ATTRIBUTE_TYPE_POSITION   = 1,
+    VERTEX_ATTRIBUTE_TYPE_NORMAL     = 1 << 1,
+    VERTEX_ATTRIBUTE_TYPE_TANGENT    = 1 << 2,
+    VERTEX_ATTRIBUTE_TYPE_BITANGENT  = 1 << 3,
+    VERTEX_ATTRIBUTE_TYPE_UV         = 1 << 4,
+    VERTEX_ATTRIBUTE_TYPE_COLOR_RGB  = 1 << 5,
+    VERTEX_ATTRIBUTE_TYPE_COLOR_RGBA = 1 << 6,
+
 };
 
-template<typename TAttribute>
+
 struct VtxAttributeLayout
 {
-    static constexpr std::uint32_t AttributeSize() { return static_cast<std::uint32_t>(sizeof(VtxAttributeLayout)); }
+    std::uint32_t m_Size;
+    VertexAttributeType m_Type;
 };
 
 class VtxLayout
 {
 public:
+    template<typename TAttribute>
+    void AddAttribute()
+    {
+        m_Attributes.emplace_back(VtxAttributeLayout{ static_cast<std::uint32_t>(sizeof(TAttribute)), TAttribute::Type() });
+    }
 
+    std::uint32_t GetVertexCount() const { return static_cast<std::uint32_t>(m_Attributes.size()); }
+
+    std::uint32_t GetVertexSize() const 
+    { 
+        std::uint32_t result = 0;
+        for (auto const& attribute : m_Attributes)
+            result += attribute.m_Size;
+
+        return result;
+    }
+
+    std::vector<std::byte>> Serialize() const
+    {
+
+    }
+
+
+private:
+    std::vector<VtxAttributeLayout> m_Attributes;
 };
+
 
 struct ModelHeader
 {
@@ -36,26 +67,43 @@ struct ModelHeader
 struct Pos
 {
     float x, y, z;
+    static constexpr VertexAttributeType Type() { return VERTEX_ATTRIBUTE_TYPE_POSITION; }
+};
+
+struct ColorRGB
+{
+    float r, g, b;
+    static constexpr VertexAttributeType Type() { return VERTEX_ATTRIBUTE_TYPE_COLOR_RGB; }
+};
+
+struct ColorRGBA
+{
+    float r, g, b, a;
+    static constexpr VertexAttributeType Type() { return VERTEX_ATTRIBUTE_TYPE_COLOR_RGBA; }
 };
 
 struct Normal
 {
     float x, y, z;
+    static constexpr VertexAttributeType Type() { return VERTEX_ATTRIBUTE_TYPE_NORMAL; }
 };
 
 struct Tangent
 {
 	float x, y, z;
+    static constexpr VertexAttributeType Type() { return VERTEX_ATTRIBUTE_TYPE_TANGENT; }
 };
 
 struct Bitangent
 {
 	float x, y, z;
+    static constexpr VertexAttributeType Type() { return VERTEX_ATTRIBUTE_TYPE_BITANGENT; }
 };
 
 struct UV
 {
 	float u, v;
+    static constexpr VertexAttributeType Type() { return VERTEX_ATTRIBUTE_TYPE_UV; }
 };
 
 struct Vertex

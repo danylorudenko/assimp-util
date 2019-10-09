@@ -47,18 +47,8 @@ void writeToFile(std::size_t size, char const* data, char const* destName);
 
 int main(int argc, char** argv)
 {
-    struct Pos
-    {
-        float x, y;
-    };
-
-    struct Norm
-    {
-        float x, y;
-    };
-
-    VtxLayout<Pos, Norm> layout;
-    const auto& attr = layout.GetAttributeLayout<0>();
+    VtxLayout layout;
+    layout.AddAttribute<Pos>();
     
     
     if (argc == 3) {
