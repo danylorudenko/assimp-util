@@ -49,6 +49,7 @@ int main(int argc, char** argv)
 {
     VtxLayout layout;
     layout.AddAttribute<Pos>();
+    auto result = layout.Serialize();
     
     
     if (argc == 3) {

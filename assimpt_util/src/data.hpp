@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <cstdint>
-#include <byte>
+#include <cstddef>
 
 enum VertexAttributeType : std::uint32_t
 {
@@ -44,9 +44,18 @@ public:
         return result;
     }
 
-    std::vector<std::byte>> Serialize() const
+    std::vector<std::byte> Serialize() const
     {
+        return { 
+            reinterpret_cast<std::byte const*>(m_Attributes.data()), 
+            reinterpret_cast<std::byte const*>(m_Attributes.data() + m_Attributes.size()) 
+        };
+    }
 
+    void Deserialize(std::vector<std::byte> const& data)
+    {
+        std::uint32_t const attributesCount = data.size() / sizeof(VtxAttributeLayout);
+        // hmmm
     }
 
 
