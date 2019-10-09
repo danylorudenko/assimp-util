@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <cassert>
 
 #include <assimp\Importer.hpp>
 #include <assimp\scene.h>
