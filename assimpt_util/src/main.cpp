@@ -8,6 +8,23 @@
 #include <assimp\scene.h>
 #include <assimp\postprocess.h>
 
+
+struct ImportSettings
+{
+    bool m_Triangulate = true;
+    bool m_ConvertToLeftHanded = true;
+    bool m_GenerateNormals = true;
+} g_ImportSettings;
+
+struct ExportSettings
+{
+    bool m_ExportNormals = true;
+    bool m_ExportTangent = true;
+    bool m_ExportBitangent = true;
+    bool m_ExportUV = true;
+} g_ExportSettings;
+
+
 #define OUTPUT_NORMAL
 //#define OUTPUT_TANGENT
 //#define OUTPUT_BITANGENT
@@ -15,7 +32,7 @@
 
 #include "data.hpp"
 
-void processModel(char const* sourceName, char const* destName);
+void processFile(char const* sourceName, char const* destName);
 
 void recursiveMeshParse(aiNode const* node, aiScene const* scene, std::vector<Mesh>& storage);
 
@@ -30,13 +47,65 @@ void writeToFile(std::size_t size, char const* data, char const* destName);
 
 int main(int argc, char** argv)
 {
+    struct Pos
+    {
+        float x, y;
+    };
+
+    struct Norm
+    {
+        float x, y;
+    };
+
+    VtxLayout<Pos, Norm> layout;
+    const auto& attr = layout.GetAttributeLayout<0>();
+    
+    
     if (argc == 3) {
-        processModel(*(argv + 1), *(argv + 2));
+        processFile(*(argv + 1), *(argv + 2));
     }
     
     system("pause");
     return 0;
 }
+
+void processFile(char const* sourceName, char const* destName) {
+    Assimp::Importer importer;
+    aiScene const* scene = importer.ReadFile(std::string{ sourceName }, aiProcess_Triangulate | aiProcess_ConvertToLeftHanded | aiProcess_GenNormals);
+    std::cerr << importer.GetErrorString() << std::endl;
+    if (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) {
+        std::cerr << "ASSIMP::IMPORTER::ERROR" << std::endl
+            << "Can't read the file " << sourceName << std::endl;
+    }
+    else {
+        std::vector<Mesh> meshStorage;
+        recursiveMeshParse(scene->mRootNode, scene, meshStorage);
+
+        std::vector<std::uint8_t> vertexStorage{};
+        std::vector<std::uint8_t> indexStorage{};
+
+        std::size_t const meshCount = meshStorage.size();
+        for (std::size_t i = 0; i < meshCount; i++) {
+            serializeMeshVertices(meshStorage[i], vertexStorage);
+            serializeMeshIndicies(meshStorage[i], indexStorage);
+        }
+        ModelHeader header = provideHeader(meshStorage);
+
+        //writeToFile(sizeof(header), reinterpret_cast<char const*>(&header), destName);
+        //writeToFile(vertexStorage.size(), reinterpret_cast<char const*>(vertexStorage.data()), destName);
+        //writeToFile(indexStorage.size(), reinterpret_cast<char const*>(indexStorage.data()), destName);
+
+        std::ofstream ostream{ destName, std::ios_base::binary | std::ios_base::trunc };
+        assert(ostream.is_open());
+
+        ostream.write(reinterpret_cast<char const*>(&header), sizeof(header));
+        ostream.write(reinterpret_cast<char const*>(vertexStorage.data()), vertexStorage.size());
+        ostream.write(reinterpret_cast<char const*>(indexStorage.data()), indexStorage.size());
+
+        ostream.close();
+    }
+}
+
 
 Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
 {
@@ -81,22 +150,22 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
 			uv.v = mesh->mTextureCoords[0][i].y;
 #endif // OUTPUT_UV
 		}
-
-        vertices.push_back( Vertex{ 
-            vert,
-#ifdef OUTPUT_NORMAL
-            norm, 
-#endif // OUTPUT_NORMAL
-#ifdef OUTPUT_TANGENT
-            tangent, 
-#endif // OUTPUT_TANGENT
-#ifdef OUTPUT_BITANGENT
-            bitangent, 
-#endif // OUTPUT_BITANGENT
-#ifdef OUTPUT_UV
-            uv 
-#endif // OUTPUT_UV
-        } );
+//
+//        vertices.push_back( Vertex{ 
+//            vert,
+//#ifdef OUTPUT_NORMAL
+//            norm, 
+//#endif // OUTPUT_NORMAL
+//#ifdef OUTPUT_TANGENT
+//            tangent, 
+//#endif // OUTPUT_TANGENT
+//#ifdef OUTPUT_BITANGENT
+//            bitangent, 
+//#endif // OUTPUT_BITANGENT
+//#ifdef OUTPUT_UV
+//            uv 
+//#endif // OUTPUT_UV
+//        } );
     }
 
     std::vector<std::uint32_t> indicies;
@@ -116,43 +185,6 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
     return std::move(processedMesh);
 }
 
-void processModel(char const* sourceName, char const* destName) {
-    Assimp::Importer importer;
-    aiScene const* scene = importer.ReadFile(std::string{ sourceName }, aiProcess_Triangulate | aiProcess_ConvertToLeftHanded | aiProcess_GenNormals);
-    std::cerr << importer.GetErrorString() << std::endl;
-    if (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) {
-        std::cerr << "ASSIMP::IMPORTER::ERROR" << std::endl
-            << "Can't read the file " << sourceName << std::endl;
-    }
-    else {
-        std::vector<Mesh> meshStorage;
-        recursiveMeshParse(scene->mRootNode, scene, meshStorage);
-
-        std::vector<std::uint8_t> vertexStorage{};
-        std::vector<std::uint8_t> indexStorage{};
-
-        std::size_t const meshCount = meshStorage.size();
-        for (std::size_t i = 0; i < meshCount; i++) {
-            serializeMeshVertices(meshStorage[i], vertexStorage);
-            serializeMeshIndicies(meshStorage[i], indexStorage);
-        }        
-        ModelHeader header = provideHeader(meshStorage);
-
-        //writeToFile(sizeof(header), reinterpret_cast<char const*>(&header), destName);
-        //writeToFile(vertexStorage.size(), reinterpret_cast<char const*>(vertexStorage.data()), destName);
-        //writeToFile(indexStorage.size(), reinterpret_cast<char const*>(indexStorage.data()), destName);
-
-        std::ofstream ostream{ destName, std::ios_base::binary | std::ios_base::trunc };
-        assert(ostream.is_open());
-
-        ostream.write(reinterpret_cast<char const*>(&header), sizeof(header));
-        ostream.write(reinterpret_cast<char const*>(vertexStorage.data()), vertexStorage.size());
-        ostream.write(reinterpret_cast<char const*>(indexStorage.data()), indexStorage.size());
-
-        ostream.close();
-    }
-}
-
 void recursiveMeshParse(aiNode const* node, aiScene const* scene, std::vector<Mesh>& storage) {
     std::size_t const meshCount = node->mNumMeshes;
     for (std::size_t i = 0; i < meshCount; i++) {
@@ -169,26 +201,12 @@ void recursiveMeshParse(aiNode const* node, aiScene const* scene, std::vector<Me
 ModelHeader provideHeader(std::vector<Mesh>& meshStorage)
 {
     ModelHeader header{};
-    header.vertexSize_ = sizeof(Vertex);
-    header.indexSize_ = sizeof(std::uint32_t);
+    header.m_VertexSize = sizeof(Vertex);
+    header.m_IndexSize = sizeof(std::uint32_t);
     for (std::size_t i = 0; i < meshStorage.size(); i++) {
-        header.vertexCount_ += static_cast<std::uint32_t>(meshStorage[i].vertices.size());
-        header.indexCount_ += static_cast<std::uint32_t>(meshStorage[i].indicies.size());
+        header.m_VertexCount += static_cast<std::uint32_t>(meshStorage[i].vertices.size());
+        header.m_IndexCount += static_cast<std::uint32_t>(meshStorage[i].indicies.size());
     }
-
-    header.vertexContentFlags_ = MODEL_VERTEX_CONTENT_POSITION;
-#ifdef OUTPUT_NORMAL
-    header.vertexContentFlags_ |= MODEL_VERTEX_CONTENT_NORMAL;
-#endif // OUTPUT_NORMAL
-#ifdef OUTPUT_TANGENT
-    header.vertexContentFlags_ |= MODEL_VERTEX_CONTENT_TANGENT;
-#endif // OUTPUT_TANGENT
-#ifdef OUTPUT_BITANGENT
-    header.vertexContentFlags_ |= MODEL_VERTEX_CONTENT_BITANGENT;
-#endif // OUTPUT_BITANGENT
-#ifdef OUTPUT_UV
-    header.vertexContentFlags_ |= MODEL_VERTEX_CONTENT_UV;
-#endif // OUTPUT_UV
 
     return header;
 }
