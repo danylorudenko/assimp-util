@@ -31,7 +31,12 @@ public:
     void AddAttribute()
     {
         m_Attributes.emplace_back(VtxAttributeLayout{ static_cast<std::uint32_t>(sizeof(TAttribute)), TAttribute::Type() });
+        m_AttributeTypeFlags |= static_cast<std::uint32_t>(TAttribute::Type());
     }
+
+    std::uint32_t GetAttributeCount() const { return static_cast<std::uint32_t>(m_Attributes.size()); }
+
+    VtxAttributeLayout const& GetAttribute(std::uint32_t id) const { return m_Attributes[id]; }
 
     std::uint32_t GetVertexCount() const { return static_cast<std::uint32_t>(m_Attributes.size()); }
 
@@ -44,22 +49,14 @@ public:
         return result;
     }
 
-    std::vector<std::byte> Serialize() const
+    bool HasAttributeTypes(std::uint32_t vtxAttributeTypeMask)
     {
-        return { 
-            reinterpret_cast<std::byte const*>(m_Attributes.data()), 
-            reinterpret_cast<std::byte const*>(m_Attributes.data() + m_Attributes.size()) 
-        };
-    }
-
-    void Deserialize(std::vector<std::byte> const& data)
-    {
-        std::uint32_t const attributesCount = data.size() / sizeof(VtxAttributeLayout);
-        // hmmm
+        return (m_AttributeTypeFlags & vtxAttributeTypeMask) == vtxAttributeTypeMask;
     }
 
 
 private:
+    std::uint32_t m_AttributeTypeFlags;
     std::vector<VtxAttributeLayout> m_Attributes;
 };
 
@@ -115,11 +112,6 @@ struct UV
     static constexpr VertexAttributeType Type() { return VERTEX_ATTRIBUTE_TYPE_UV; }
 };
 
-struct Vertex
-{
-    
-};
-
 struct Mesh
 {
     Mesh() = default;
@@ -128,9 +120,9 @@ struct Mesh
     Mesh& operator=(Mesh const&) = default;
     Mesh& operator=(Mesh&&) = default;
 
-
-    std::vector<Vertex> vertices;
-    std::vector<std::uint32_t> indicies;
+    VtxLayout                   m_VtxLayout;
+    std::vector<std::byte>      m_Vertices;
+    std::vector<std::uint32_t>  m_Indicies;
 
     //int material;
 };

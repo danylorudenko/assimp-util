@@ -8,6 +8,8 @@
 #include <assimp\scene.h>
 #include <assimp\postprocess.h>
 
+#include "data.hpp"
+
 
 struct ImportSettings
 {
@@ -25,12 +27,9 @@ struct ExportSettings
 } g_ExportSettings;
 
 
-#define OUTPUT_NORMAL
-//#define OUTPUT_TANGENT
-//#define OUTPUT_BITANGENT
-//#define OUTPUT_UV
+VtxLayout g_VertexLayout;
 
-#include "data.hpp"
+
 
 void processFile(char const* sourceName, char const* destName);
 
@@ -40,16 +39,26 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene);
 
 ModelHeader provideHeader(std::vector<Mesh>& meshStorage);
 
-void serializeMeshVertices(Mesh const& mesh, std::vector<std::uint8_t>& storage);
-void serializeMeshIndicies(Mesh const& mesh, std::vector<std::uint8_t>& storage);
+void serializeMeshVertices(Mesh const& mesh, std::vector<std::byte>& storage);
+void serializeMeshIndicies(Mesh const& mesh, std::vector<std::byte>& storage);
 
 void writeToFile(std::size_t size, char const* data, char const* destName);
 
+template<typename T>
+void binaryWritePOD(std::vector<std::byte>& storage, T* pod)
+{
+    storage.insert(
+        vertices.end(),
+        reinterpret_cast<std::byte*>(&pod),
+        reinterpret_cast<std::byte*>(&pod) + sizeof(T)
+    );
+}
+
 int main(int argc, char** argv)
 {
-    VtxLayout layout;
-    layout.AddAttribute<Pos>();
-    auto result = layout.Serialize();
+    g_VertexLayout.AddAttribute<Pos>();
+    g_VertexLayout.AddAttribute<Normal>();
+    g_VertexLayout.AddAttribute<UV>();
     
     
     if (argc == 3) {
@@ -72,8 +81,8 @@ void processFile(char const* sourceName, char const* destName) {
         std::vector<Mesh> meshStorage;
         recursiveMeshParse(scene->mRootNode, scene, meshStorage);
 
-        std::vector<std::uint8_t> vertexStorage{};
-        std::vector<std::uint8_t> indexStorage{};
+        std::vector<std::byte> vertexStorage{};
+        std::vector<std::byte> indexStorage{};
 
         std::size_t const meshCount = meshStorage.size();
         for (std::size_t i = 0; i < meshCount; i++) {
@@ -103,10 +112,60 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
     assert(mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE);
 
     std::uint32_t const vertexCount = static_cast<std::uint32_t>(mesh->mNumVertices);
-    std::vector<Vertex> vertices;
+    std::vector<std::byte> vertices;
     vertices.reserve(vertexCount);
     for (std::uint32_t i = 0; i < vertexCount; i++) {
-        Pos vert{};
+        // iterate trough attributes to write them in right order
+        if(g_VertexLayout.HasAttributeTypes(VERTEX_ATTRIBUTE_TYPE_POSITION))
+        {
+            Pos vert{};
+            vert.x = mesh->mVertices[i].x;
+            vert.y = mesh->mVertices[i].y;
+            vert.z = mesh->mVertices[i].z;
+
+            binaryWritePOD(vertices, &vert);
+        }
+
+        if (g_VertexLayout.HasAttributeTypes(VERTEX_ATTRIBUTE_TYPE_NORMAL))
+        {
+            assert(mesh->mNormals != nullptr && "There are no normals to read!");
+            Normal norm{};
+            norm.x = mesh->mNormals[i].x;
+            norm.y = mesh->mNormals[i].y;
+            norm.z = mesh->mNormals[i].z;
+        }
+
+        if (g_VertexLayout.HasAttributeTypes(VERTEX_ATTRIBUTE_TYPE_TANGENT))
+        {
+            assert(mesh->mTangents != nullptr && "There are no tangents to read!");
+
+            Tangent tan{};
+            tan.x = mesh->mTangents[i].x;
+            tan.y = mesh->mTangents[i].y;
+            tan.z = mesh->mTangents[i].z;
+        }
+
+        if (g_VertexLayout.HasAttributeTypes(VERTEX_ATTRIBUTE_TYPE_BITANGENT))
+        {
+            Bitangent tan{};
+            tan.x = mesh->mBitangents[i].x;
+            tan.y = mesh->mBitangents[i].y;
+            tan.z = mesh->mBitangents[i].z;
+        }
+
+        if (g_VertexLayout.HasAttributeTypes(VERTEX_ATTRIBUTE_TYPE_COLOR_RGB))
+        {
+            //assert(mesh->GetNumColorChannels() >= 3 && "Not enough color channels per vertex!");
+            //ColorRGB rgb{};
+            //rgb.r = mesh->mColors[i][0];
+            assert(false && "I don't support color exporting yet.");
+        }
+
+        if (g_VertexLayout.HasAttributeTypes(VERTEX_ATTRIBUTE_TYPE_COLOR_RGBA))
+        {
+            assert(falst && "I don't support color exporting yet.");
+        }
+        
         Normal norm{};
 		Tangent tangent{};
 		Bitangent bitangent{};
@@ -141,22 +200,6 @@ Mesh processMesh(aiMesh const* mesh, aiScene const* scene)
 			uv.v = mesh->mTextureCoords[0][i].y;
 #endif // OUTPUT_UV
 		}
-//
-//        vertices.push_back( Vertex{ 
-//            vert,
-//#ifdef OUTPUT_NORMAL
-//            norm, 
-//#endif // OUTPUT_NORMAL
-//#ifdef OUTPUT_TANGENT
-//            tangent, 
-//#endif // OUTPUT_TANGENT
-//#ifdef OUTPUT_BITANGENT
-//            bitangent, 
-//#endif // OUTPUT_BITANGENT
-//#ifdef OUTPUT_UV
-//            uv 
-//#endif // OUTPUT_UV
-//        } );
     }
 
     std::vector<std::uint32_t> indicies;
@@ -202,7 +245,7 @@ ModelHeader provideHeader(std::vector<Mesh>& meshStorage)
     return header;
 }
 
-void serializeMeshVertices(Mesh const& mesh, std::vector<std::uint8_t>& storage)
+void serializeMeshVertices(Mesh const& mesh, std::vector<std::byte>& storage)
 {
     std::uint8_t buffer[sizeof(Vertex)];
     for (std::size_t i = 0; i < mesh.vertices.size(); i++) {
@@ -215,7 +258,7 @@ void serializeMeshVertices(Mesh const& mesh, std::vector<std::uint8_t>& storage)
     }
 }
 
-void serializeMeshIndicies(Mesh const& mesh, std::vector<std::uint8_t>& storage)
+void serializeMeshIndicies(Mesh const& mesh, std::vector<std::byte>& storage)
 {
     std::uint32_t index;
     std::uint8_t buffer[sizeof(index)];
